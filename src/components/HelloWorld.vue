@@ -17,15 +17,21 @@
     </div>
     <div class="form">
       <n-form ref="formRef" :label-width="80" :model="formValue" :rules="rules">
+        <n-form-item label="时间" path="time">
+          <n-date-picker v-model:value="time" type="datetime" clearable />
+          <n-button style="margin-left: 20px" secondary type="success" @click="changeLunar">
+            转化为阴历数字
+          </n-button>
+        </n-form-item>
         <n-grid :cols="24" :x-gap="4">
           <n-form-item-gi :span="8" label="数字 1" path="num1">
-            <n-input-number v-model:value="formValue.num1" placeholder=" " :min="0" />
+            <n-input-number @update:value="clearResult" v-model:value="formValue.num1" placeholder=" " :min="0" />
           </n-form-item-gi>
           <n-form-item-gi :span="8" label="数字 2" path="num2">
-            <n-input-number v-model:value="formValue.num2" placeholder=" " :min="0" />
+            <n-input-number @update:value="clearResult" v-model:value="formValue.num2" placeholder=" " :min="0" />
           </n-form-item-gi>
           <n-form-item-gi :span="8" label="数字 3" path="num3">
-            <n-input-number v-model:value="formValue.num3" placeholder=" " :min="0" />
+            <n-input-number @update:value="clearResult" v-model:value="formValue.num3" placeholder=" " :min="0" />
           </n-form-item-gi>
         </n-grid>
         <n-grid :cols="24" :x-gap="4">
@@ -50,8 +56,8 @@
 </template>
 
 <script setup>
-import { NTag, NForm, NFormItem, NInputNumber, NButton, useMessage, NGrid, NGridItem, NFormItemGi, NSpace } from 'naive-ui'
-import { computed, ref } from 'vue';
+import { NDatePicker, NForm, NFormItem, NInputNumber, NButton, useMessage, NGrid, NGridItem, NFormItemGi, NSpace } from 'naive-ui'
+import { computed, ref, onMounted } from 'vue';
 
 const message = useMessage()
 
@@ -119,7 +125,6 @@ const formValue = ref({
   num3: null,
 })
 
-
 const validateNumber = (_, value) => {
   if (!Number.isInteger(value)) {
     return new Error('输入不是数字，你不心诚，道爷叫闪电⚡️劈你!!!')
@@ -159,6 +164,11 @@ const start = async () => {
     num3
   } = formValue.value
   for (let num of [num1, num2, num3]) {
+    if (num === 0) {
+      num = 6
+    } else if (num > 6) {
+      num = (num % 6) + 6
+    }
     while (num > 1) {
       await new Promise((resolve) => {
         setTimeout(() => {
@@ -194,6 +204,44 @@ const reset = () => {
     num3: null
   }
 }
+
+const time = ref(null)
+const LunarMonth = {
+  '一': 1,
+  '二': 2,
+  '三': 3,
+  '四': 4,
+  '五': 5,
+  '六': 6,
+  '七': 7,
+  '八': 8,
+  '九': 9,
+  '十': 10,
+  '十一': 11,
+  '腊': 12,
+}
+const getLunarMonth = (str) => LunarMonth[str]
+const getLunarHour = (hour) => Math.floor(((hour + 1) / 2) % 12) + 1
+const changeLunar = () => {
+  if (!time.value) {
+    return
+  }
+  result.value = []
+  const lunar = new Date(time.value).toLocaleString('zh-Hans-u-ca-chinese')
+  const lunarArray = lunar.split(/\s|年|月|\:/)
+  formValue.value.num1 = getLunarMonth(lunarArray[1])
+  formValue.value.num2 = +lunarArray[2]
+  formValue.value.num3 = getLunarHour(+lunarArray[3])
+}
+const clearResult = () => {
+  if (result.value.length > 0) {
+    result.value = []
+  }
+}
+
+onMounted(() => {
+  time.value = Date.now()
+})
 
 </script>
 

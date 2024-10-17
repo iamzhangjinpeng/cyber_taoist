@@ -1,11 +1,13 @@
 <template>
-  <NMessageProvider>
-    <HelloWorld />
-  </NMessageProvider>
+  <n-config-provider :locale="zhCN" :date-locale="dateZhCN">
+    <NMessageProvider>
+      <HelloWorld />
+    </NMessageProvider>
+  </n-config-provider>
 </template>
 
 <script setup>
-import { NMessageProvider } from 'naive-ui';
+import { NMessageProvider, NConfigProvider, zhCN, dateZhCN } from 'naive-ui';
 import HelloWorld from './components/HelloWorld.vue'
 </script>
 
