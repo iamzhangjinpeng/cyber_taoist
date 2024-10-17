@@ -159,7 +159,6 @@ const start = async () => {
     num3
   } = formValue.value
   for (let num of [num1, num2, num3]) {
-    num %= words.length
     while (num > 1) {
       await new Promise((resolve) => {
         setTimeout(() => {
