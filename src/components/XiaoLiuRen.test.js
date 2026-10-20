@@ -68,6 +68,25 @@ describe('XiaoLiuRen', () => {
     expect(wrapper.findAll('.hex.is-current')).toHaveLength(1)
   })
 
+  it('推算过程中显示步数，结束后清空并播报结果', async () => {
+    const wrapper = mount(XiaoLiuRen)
+    await fillNumbers(wrapper, [3, 5, 8])
+    await wrapper.find('form').trigger('submit')
+
+    await vi.advanceTimersByTimeAsync(700)
+    await flush()
+    expect(wrapper.find('.status').text()).toMatch(
+      /第 \d+ \/ 7 步 · (大安|留连|速喜|赤口|小吉|空亡)/
+    )
+    expect(wrapper.find('.palm').classes()).toContain('is-running')
+
+    await vi.advanceTimersByTimeAsync(5000)
+    await flush()
+    expect(wrapper.find('.status').text()).toBe('')
+    expect(wrapper.find('.palm').classes()).not.toContain('is-running')
+    expect(wrapper.find('[role="status"]').text()).toBe('起卦结果：速喜、大安、留连')
+  })
+
   it('第二个数从第一个落宫接着数，而不是从大安重来', async () => {
     const wrapper = mount(XiaoLiuRen)
     await fillNumbers(wrapper, [2, 3, 5])

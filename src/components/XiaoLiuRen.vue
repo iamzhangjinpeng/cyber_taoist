@@ -5,7 +5,7 @@
       <p class="subtitle">掌上起卦 · 落子无悔</p>
     </header>
 
-    <section class="palm" aria-label="掌诀图">
+    <section class="palm" :class="{ 'is-running': running }" aria-label="掌诀图">
       <div v-for="cell in cells" :key="cell.id" class="cell" :class="{ shaded: cell.shaded }">
         <div
           v-if="cell.hexagram"
@@ -16,6 +16,9 @@
         </div>
       </div>
     </section>
+
+    <p class="status" aria-hidden="true">{{ stepText }}</p>
+    <p class="sr-only" role="status" aria-live="polite">{{ liveText }}</p>
 
     <form class="form" novalidate @submit.prevent="onSubmit">
       <div class="field">
@@ -71,8 +74,16 @@ import { onBeforeUnmount, reactive, ref } from 'vue'
 import { HEXAGRAMS, MAX_INPUT, buildCells, divine, isValidInput } from '../core/liuRen'
 import { SHICHEN_NAMES, lunarFromDate, toDateTimeLocalValue } from '../core/lunar'
 
-/** 每格跳动的间隔（毫秒） */
-const STEP_MS = 200
+/** 每一步的基础间隔（毫秒） */
+const STEP_MS = 130
+/** 倒数第二步放慢，制造「落定」的手感 */
+const PENULTIMATE_STEP_MS = 260
+/** 最后一步放慢 */
+const LAST_STEP_MS = 420
+/** 点击后先停顿一下再开始 */
+const INITIAL_MS = 200
+/** 三个数字都不移动时的停顿，避免看起来没反应 */
+const HOLD_MS = 500
 /** 提示信息停留时间（毫秒） */
 const MESSAGE_MS = 4000
 
@@ -89,6 +100,8 @@ const numbers = reactive({ num1: '', num2: '', num3: '' })
 const results = ref([])
 const currentKey = ref(null)
 const running = ref(false)
+const stepText = ref('')
+const liveText = ref('')
 const message = ref('')
 
 /** 用于打断正在进行的起卦动画 */
@@ -96,6 +109,20 @@ let runToken = 0
 let messageTimer = 0
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/** 剩余步数越少越慢，最后一步「落定」 */
+function delayFor(remaining) {
+  if (remaining <= 1) return LAST_STEP_MS
+  if (remaining === 2) return PENULTIMATE_STEP_MS
+  return STEP_MS
+}
+
+/** 移动端震动反馈，不支持的环境静默跳过 */
+function buzz(pattern) {
+  if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+    navigator.vibrate(pattern)
+  }
+}
 
 function notify(text) {
   message.value = text
@@ -141,25 +168,44 @@ async function start(values) {
   running.value = true
   results.value = []
   currentKey.value = null
+  stepText.value = ''
 
   // 月上起日、日上起时：先算出三个落宫，再按顺序一格一格走过去
   const positions = divine(values)
+  const totalSteps = positions.reduce((sum, target, index) => {
+    const previous = index === 0 ? 0 : positions[index - 1]
+    return sum + ((target - previous + HEXAGRAMS.length) % HEXAGRAMS.length)
+  }, 0)
+
   let position = 0
+  let done = 0
 
   try {
-    await sleep(STEP_MS)
+    await sleep(INITIAL_MS)
+    if (totalSteps === 0) {
+      // 三个数字都停在原地，给一点停顿，避免看起来像没反应
+      await sleep(HOLD_MS)
+    }
+
     for (const target of positions) {
       const steps = (target - position + HEXAGRAMS.length) % HEXAGRAMS.length
       for (let step = 0; step < steps; step += 1) {
         if (token !== runToken) return
-        await sleep(STEP_MS)
+        await sleep(delayFor(totalSteps - done))
+        done += 1
         position = (position + 1) % HEXAGRAMS.length
         currentKey.value = HEXAGRAMS[position].key
+        stepText.value = `第 ${done} / ${totalSteps} 步 · ${HEXAGRAMS[position].key}`
       }
       if (token !== runToken) return
       currentKey.value = HEXAGRAMS[position].key
       results.value = [...results.value, HEXAGRAMS[position]]
+      if (steps > 0) buzz(12)
     }
+
+    stepText.value = ''
+    liveText.value = `起卦结果：${results.value.map((item) => item.key).join('、')}`
+    buzz([0, 30, 60, 45])
   } finally {
     if (token === runToken) running.value = false
   }
@@ -184,6 +230,8 @@ function reset() {
   running.value = false
   results.value = []
   currentKey.value = null
+  stepText.value = ''
+  liveText.value = ''
   numbers.num1 = ''
   numbers.num2 = ''
   numbers.num3 = ''
@@ -254,7 +302,10 @@ onBeforeUnmount(() => {
   border-radius: 3px;
   color: #fff;
   font-size: clamp(13px, 3.4vw, 15px);
-  transition: transform 0.15s ease;
+  transition:
+    transform 0.12s ease,
+    opacity 0.2s ease,
+    box-shadow 0.12s ease;
 }
 
 .hex.good {
@@ -266,7 +317,55 @@ onBeforeUnmount(() => {
 }
 
 .hex.is-current {
-  border: 2px dashed #333;
+  position: relative;
+  z-index: 2;
+  border-color: #333;
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.9),
+    0 0 0 5px rgba(43, 43, 43, 0.35),
+    0 8px 16px rgba(0, 0, 0, 0.22);
+  transform: scale(1.12);
+}
+
+/* 推算过程中：当前六神跳动，其余淡出，视线跟着走 */
+.palm.is-running .hex.is-current {
+  animation: pulse 0.62s ease-in-out infinite;
+}
+
+.palm.is-running .hex:not(.is-current) {
+  opacity: 0.45;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1.12);
+  }
+
+  50% {
+    transform: scale(1.22);
+  }
+}
+
+.status {
+  min-height: 22px;
+  margin: 10px 0 0;
+  color: #8c8c8c;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  white-space: nowrap;
+  clip-path: inset(50%);
 }
 
 .form {
@@ -323,9 +422,9 @@ onBeforeUnmount(() => {
 }
 
 .results {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
-  justify-content: space-between;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -335,6 +434,19 @@ onBeforeUnmount(() => {
   flex: 1;
   width: auto;
   height: 38px;
+  animation: pop 0.22s ease-out;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .actions {
@@ -389,8 +501,14 @@ onBeforeUnmount(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hex {
+  .hex,
+  .result {
     transition: none;
+    animation: none;
+  }
+
+  .hex.is-current {
+    transform: none;
   }
 }
 </style>
