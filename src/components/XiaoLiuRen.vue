@@ -37,9 +37,9 @@
             class="input"
             type="number"
             inputmode="numeric"
-            min="0"
+            min="1"
             :max="MAX_INPUT"
-            placeholder="0 ~ 1000"
+            placeholder="1 ~ 1000"
             :disabled="running"
             @input="clearResults"
           />
@@ -68,7 +68,7 @@
 
 <script setup>
 import { onBeforeUnmount, reactive, ref } from 'vue'
-import { HEXAGRAMS, MAX_INPUT, buildCells, isValidInput, stepsFor } from '../core/liuRen'
+import { HEXAGRAMS, MAX_INPUT, buildCells, divine, isValidInput } from '../core/liuRen'
 import { SHICHEN_NAMES, lunarFromDate, toDateTimeLocalValue } from '../core/lunar'
 
 /** 每格跳动的间隔（毫秒） */
@@ -142,11 +142,15 @@ async function start(values) {
   results.value = []
   currentKey.value = null
 
+  // 月上起日、日上起时：先算出三个落宫，再按顺序一格一格走过去
+  const positions = divine(values)
+  let position = 0
+
   try {
     await sleep(STEP_MS)
-    for (const value of values) {
-      let position = 0
-      for (let step = 0; step < stepsFor(value); step += 1) {
+    for (const target of positions) {
+      const steps = (target - position + HEXAGRAMS.length) % HEXAGRAMS.length
+      for (let step = 0; step < steps; step += 1) {
         if (token !== runToken) return
         await sleep(STEP_MS)
         position = (position + 1) % HEXAGRAMS.length
@@ -168,7 +172,7 @@ function onSubmit() {
     raw === '' ? Number.NaN : Number(raw)
   )
   if (!values.every(isValidInput)) {
-    notify('三个数字都要填 0~1000 的整数，道爷才算得动')
+    notify('三个数字都要填 1~1000 的整数，道爷才算得动')
     return
   }
 

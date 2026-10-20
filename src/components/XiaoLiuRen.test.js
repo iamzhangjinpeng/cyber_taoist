@@ -55,7 +55,7 @@ describe('XiaoLiuRen', () => {
     expect(wrapper.find('.toast').text()).toContain('先选一个时间')
   })
 
-  it('起卦后依次显示三个结果', async () => {
+  it('起卦后依次显示三个结果（月上起日、日上起时）', async () => {
     const wrapper = mount(XiaoLiuRen)
     await fillNumbers(wrapper, [3, 5, 8])
     await wrapper.find('form').trigger('submit')
@@ -64,8 +64,19 @@ describe('XiaoLiuRen', () => {
     await flush()
 
     const results = wrapper.findAll('.result')
-    expect(results.map((item) => item.text())).toEqual(['速喜', '小吉', '留连'])
+    expect(results.map((item) => item.text())).toEqual(['速喜', '大安', '留连'])
     expect(wrapper.findAll('.hex.is-current')).toHaveLength(1)
+  })
+
+  it('第二个数从第一个落宫接着数，而不是从大安重来', async () => {
+    const wrapper = mount(XiaoLiuRen)
+    await fillNumbers(wrapper, [2, 3, 5])
+    await wrapper.find('form').trigger('submit')
+    await vi.advanceTimersByTimeAsync(5000)
+    await flush()
+
+    const results = wrapper.findAll('.result')
+    expect(results.map((item) => item.text())).toEqual(['留连', '赤口', '留连'])
   })
 
   it('动画期间禁用按钮，重复点击不会叠加起卦', async () => {
@@ -92,7 +103,7 @@ describe('XiaoLiuRen', () => {
     await fillNumbers(wrapper, [1, 2, 1001])
     await wrapper.find('form').trigger('submit')
 
-    expect(wrapper.find('.toast').text()).toContain('0~1000')
+    expect(wrapper.find('.toast').text()).toContain('1~1000')
     expect(wrapper.findAll('.result')).toHaveLength(0)
   })
 

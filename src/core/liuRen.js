@@ -1,8 +1,8 @@
 /**
  * 小六壬核心算法。
  *
- * 保留旧版本的起数规则：1 从「大安」起，0 与 6 都落在「空亡」。
- * 结果只依赖传入的数字，便于单元测试。
+ * 起课规则：月上起日，日上起时——三个数字连续顺推，落宫即下一个数字的起点。
+ * 数字从 1 起（1 停在原地），超过 6 时按六循环。
  */
 
 /** 六神，顺序即掌诀顺序 */
@@ -54,22 +54,36 @@ export const isShaded = (x, y) => SHADED_CELLS.has(cellId(x, y))
 export const HEXAGRAM_AT = new Map(HEXAGRAMS.map((item) => [cellId(...item.position), item]))
 
 /** 数字是否为合法输入 */
-export const isValidInput = (value) => Number.isInteger(value) && value >= 0 && value <= MAX_INPUT
+export const isValidInput = (value) => Number.isInteger(value) && value >= 1 && value <= MAX_INPUT
 
 /**
- * 从「大安」起数时需要前进的步数。
- * 0 视作 6（落在空亡），与旧版本一致。
+ * 从当前位置起数时需要前进的步数：数到 1 停在原地，之后按六循环。
  */
 export function stepsFor(value) {
-  if (!Number.isInteger(value) || value < 0) {
-    throw new RangeError(`起卦数字必须是非负整数，收到：${value}`)
+  if (!Number.isInteger(value) || value < 1) {
+    throw new RangeError(`起卦数字必须是 1~${MAX_INPUT} 的整数，收到：${value}`)
   }
-  if (value === 0) return HEXAGRAMS.length - 1
   return (value - 1) % HEXAGRAMS.length
 }
 
-/** 数字直接对应的六神 */
+/** 单个数字对应的六神（从大安起数） */
 export const hexagramFor = (value) => HEXAGRAMS[stepsFor(value)]
+
+/**
+ * 起课：按「月上起日，日上起时」连续顺推。
+ *
+ * 第一个数从大安起数，落宫即下一个数的起点，
+ * 返回每个数字的落宫下标（对应 HEXAGRAMS 的顺序）。
+ */
+export function divine(values) {
+  const positions = []
+  let position = 0
+  for (const value of values) {
+    position = (position + stepsFor(value)) % HEXAGRAMS.length
+    positions.push(position)
+  }
+  return positions
+}
 
 /** 网格的扁平单元格列表，供渲染使用 */
 export function buildCells() {
