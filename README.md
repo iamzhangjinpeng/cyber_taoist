@@ -1,25 +1,46 @@
-# Vue 3 + Vite
+# 小六壬 · Cyber Taoist
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+浏览器里的小六壬掌诀占卜：输入三个数字（或选一个时间自动换算农历数字），起卦得到
+**大安 / 留连 / 速喜 / 赤口 / 小吉 / 空亡**。
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+- 技术栈：Vue 3 + Vite 8
+- 无 UI 组件库，样式全部手写（产物约 71 KB，gzip 约 28 KB，相比旧版 469 KB 减少 85%）
+- 农历换算使用浏览器内置的 `Intl` 中国历法，不额外引依赖
 
-## 部署（GitHub Actions）
-
-部署方式已从「部署分支（`pages` 分支）」切换为 GitHub Actions 构建并发布：
-
-- 工作流：[.github/workflows/deploy.yml](.github/workflows/deploy.yml)
-- 触发方式：推送到 `master`，或在 Actions 页面手动 `Run workflow`
-- 流程：`npm ci` → `npm run build` → 上传 `dist` → 发布到 GitHub Pages
-
-仓库设置（Settings → Pages → Build and deployment）的 **Source 需选择 “GitHub Actions”**。
-第一次运行工作流时，`actions/configure-pages` 会自动完成这一步（需要 `pages: write` 权限）。
-
-本地开发：
+## 本地开发
 
 ```bash
 npm ci
-npm run dev      # 开发
-npm run build    # 构建，产物在 dist/
+npm run dev       # 本地开发
+npm run lint      # ESLint 检查
+npm run test      # Vitest 单元测试
+npm run build     # 构建，产物在 dist/
+npm run preview   # 预览构建结果
 ```
 
+## 目录结构
+
+```
+src/
+├── core/
+│   ├── liuRen.js        # 起卦算法、掌诀坐标、格子数据
+│   ├── lunar.js         # 阳历 → 农历数字、时辰换算
+│   └── *.test.js        # Vitest 用例
+├── components/
+│   └── XiaoLiuRen.vue   # 页面组件（表单、掌诀图、动画）
+├── App.vue
+├── main.js
+└── style.css
+```
+
+算法说明：数字从「大安」起数，`0` 与 `6` 都落在「空亡」，`7` 及以上按 6 循环；
+月、日、时三个数字各自从「大安」起数（保持旧版本行为）。
+
+## 部署（GitHub Actions）
+
+- 工作流：[.github/workflows/deploy.yml](.github/workflows/deploy.yml)
+- 触发：推送到 `master`，或在 Actions 页面手动 `Run workflow`
+- 流程：`npm ci` → `npm run lint` → `npm test` → `npm run build` → 上传 `dist` → 发布到 GitHub Pages
+
+仓库设置（Settings → Pages → Build and deployment）的 **Source 为 “GitHub Actions”**，
+首次运行工作流时 `actions/configure-pages` 会自动完成这一步（需要 `pages: write` 权限）。

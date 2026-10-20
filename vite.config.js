@@ -5,5 +5,5 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [vue()],
   // 相对路径，兼容 https://<user>.github.io/<repo>/ 子路径与自定义域名
-  base: './',
+  base: './'
 })

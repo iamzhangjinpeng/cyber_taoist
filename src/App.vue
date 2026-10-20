@@ -1,14 +1,7 @@
 <template>
-  <n-config-provider :locale="zhCN" :date-locale="dateZhCN">
-    <NMessageProvider>
-      <HelloWorld />
-    </NMessageProvider>
-  </n-config-provider>
+  <XiaoLiuRen />
 </template>
 
 <script setup>
-import { NMessageProvider, NConfigProvider, zhCN, dateZhCN } from 'naive-ui';
-import HelloWorld from './components/HelloWorld.vue'
+import XiaoLiuRen from './components/XiaoLiuRen.vue'
 </script>
-
-<style scoped></style>
