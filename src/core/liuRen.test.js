@@ -83,6 +83,45 @@ describe('divine（月上起日，日上起时）', () => {
   it('非法数字抛错', () => {
     expect(() => divine([1, 0, 1])).toThrow(RangeError)
   })
+
+  /**
+   * 参考实现：完全按「数到几就走几步」逐格模拟，不用任何取模公式。
+   * 用来验证 divine() 的取模优化没有算错。
+   */
+  const countFrom = (start, count) => {
+    let position = start
+    for (let i = 1; i < count; i += 1) {
+      position = (position + 1) % HEXAGRAMS.length
+    }
+    return position
+  }
+  const literalCount = (month, day, hour) => {
+    const monthPosition = countFrom(0, month)
+    const dayPosition = countFrom(monthPosition, day)
+    return [monthPosition, dayPosition, countFrom(dayPosition, hour)]
+  }
+
+  it('与逐格手工模拟完全一致（月 1~12 × 日 1~30 × 时 1~12）', () => {
+    for (let month = 1; month <= 12; month += 1) {
+      for (let day = 1; day <= 30; day += 1) {
+        for (let hour = 1; hour <= 12; hour += 1) {
+          expect(divine([month, day, hour])).toEqual(literalCount(month, day, hour))
+        }
+      }
+    }
+  })
+
+  it('时落宫只取决于「月 + 日 + 时 - 3」', () => {
+    for (const [month, day, hour] of [
+      [1, 1, 1],
+      [3, 5, 7],
+      [12, 30, 12],
+      [6, 18, 9],
+      [7, 1, 12]
+    ]) {
+      expect(divine([month, day, hour])[2]).toBe((month + day + hour - 3) % 6)
+    }
+  })
 })
 
 describe('掌诀网格', () => {
