@@ -59,9 +59,7 @@
         <button type="submit" class="btn btn--good" :disabled="running">
           {{ running ? '道爷掐指一算…' : '起卦！落子无悔！' }}
         </button>
-        <button type="button" class="btn btn--ghost" :disabled="running" @click="reset">
-          大侠重新来过
-        </button>
+        <button type="button" class="btn btn--ghost" @click="reset">大侠重新来过</button>
       </div>
     </form>
 
@@ -182,6 +180,7 @@ async function start(values) {
 
   try {
     await sleep(INITIAL_MS)
+    if (token !== runToken) return
     if (totalSteps === 0) {
       // 三个数字都停在原地，给一点停顿，避免看起来像没反应
       await sleep(HOLD_MS)
@@ -192,6 +191,8 @@ async function start(values) {
       for (let step = 0; step < steps; step += 1) {
         if (token !== runToken) return
         await sleep(delayFor(totalSteps - done))
+        // sleep 期间可能点了「重新来过」，醒来后先确认这次起卦还有效
+        if (token !== runToken) return
         done += 1
         position = (position + 1) % HEXAGRAMS.length
         currentKey.value = HEXAGRAMS[position].key

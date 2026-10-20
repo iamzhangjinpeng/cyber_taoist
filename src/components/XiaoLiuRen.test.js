@@ -117,6 +117,24 @@ describe('XiaoLiuRen', () => {
     expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeUndefined()
   })
 
+  it('推算中途点「重新来过」，不会留下残影或结果', async () => {
+    const wrapper = mount(XiaoLiuRen)
+    await fillNumbers(wrapper, [3, 5, 8])
+    await wrapper.find('form').trigger('submit')
+
+    await vi.advanceTimersByTimeAsync(500)
+    expect(wrapper.find('.palm').classes()).toContain('is-running')
+
+    await wrapper.find('.btn--ghost').trigger('click')
+    await vi.advanceTimersByTimeAsync(5000)
+    await flush()
+
+    expect(wrapper.findAll('.result')).toHaveLength(0)
+    expect(wrapper.findAll('.hex.is-current')).toHaveLength(0)
+    expect(wrapper.find('.status').text()).toBe('')
+    expect(wrapper.find('[role="status"]').text()).toBe('')
+  })
+
   it('数字越界时给出提示且不起卦', async () => {
     const wrapper = mount(XiaoLiuRen)
     await fillNumbers(wrapper, [1, 2, 1001])
